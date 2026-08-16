@@ -267,6 +267,19 @@ call C:\repo\init_dev_env.cmd --apply < nul > out_i11.txt 2>&1
 echo [I11] exit code: %errorlevel% >> status.txt
 call :assert out_i11.txt "No changes to PATH" I11-no-change
 
+echo [T13] list mode shows resolution details >> status.txt
+call C:\repo\init_dev_env.cmd --list < nul > out_i12.txt 2>&1
+echo [T13] exit code: %errorlevel% >> status.txt
+call :assert out_i12.txt "Processing tool" T13-list-verbose
+call :assert out_i12.txt "Script completed" T13-list-complete
+
+echo [T14] restore rollback >> status.txt
+call C:\repo\init_dev_env.cmd --restore < nul > out_i13.txt 2>&1
+echo [T14] exit code: %errorlevel% >> status.txt
+call :assert out_i13.txt "PATH restored from backup" T14-restore-path
+reg query "HKCU\Environment" /v GIT_HOME > reg_i13.txt 2>&1
+call :assert_absent reg_i13.txt "GIT_HOME" T14-var-removed
+
 :: ============ switch_jdk 全分支 ============
 echo [S1] EOF exits without writing >> status.txt
 call C:\repo\switch_jdk_version.cmd < nul > out_s1.txt 2>&1
@@ -306,6 +319,16 @@ echo [S7] trailing backslash appended >> status.txt
 call C:\repo\switch_jdk_version.cmd < C:\test\inputs\s7.txt > out_s7.txt 2>&1
 echo [S7] exit code: %errorlevel% >> status.txt
 call :assert out_s7.txt "new environment" S7-normalized
+
+:: T12: PowerShell 提权路径可用性验证（管理员沙盒中 RunAs 直接成功，无 UAC 弹窗）
+echo [T12] PowerShell elevation >> status.txt
+powershell -NoProfile -Command "Start-Process -FilePath 'cmd.exe' -ArgumentList '/c exit' -Verb RunAs -Wait" > C:\test\out_ps.txt 2>&1
+if errorlevel 1 (
+    >> status.txt echo [T12-elevate] FAIL
+    type C:\test\out_ps.txt >> status.txt
+) else (
+    >> status.txt echo [T12-elevate] PASS
+)
 
 echo [DONE] >> status.txt
 endlocal

@@ -17,16 +17,12 @@ if "%ERRORLEVEL%" NEQ "0" (
 
 :: 无权限尝试获取权限
 :getAdmin
-:: 创建提权VBS脚本并运行（文件名带随机数，避免并发冲突）
-set "VBS=%TEMP%\getadmin_%RANDOM%.vbs"
-echo Set UAC = CreateObject^("Shell.Application"^) > "%VBS%"
-echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%VBS%"
-"%VBS%"
+:: 使用 PowerShell 请求提权（VBScript 在新版 Windows 11 已弃用，可能无脚本引擎）
+powershell -NoProfile -Command "Start-Process -FilePath '%~s0' -Verb RunAs"
 exit /B
 
 :: 有权限继续执行
 :getStart
-if exist "%VBS%" ( del "%VBS%" )
 goto checkService
 
 :: 菜单

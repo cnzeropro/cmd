@@ -15,6 +15,7 @@ set "MODE_SOURCE=prompt"
 set "VERBOSE=0"
 set "QUIET=0"
 set "BASE_PATH=C:\App\Env"
+set "BACKUP_FILE=%USERPROFILE%\.cmd-env-path-backup.txt"
 
 :: ========== 提示确认工具根目录 ==========
 :: 回车使用默认值；输入不存在的路径时重新询问
@@ -63,8 +64,21 @@ call :add_tool "Tomcat" "tomcat-" "TOMCAT_HOME" "\bin"
 :: ========== 参数解析 ==========
 :parse_args
 if "%~1"=="" goto :args_done
+if /i "%~1"=="--list" (
+    set "RUN_MODE=dry-run"
+    set "VERBOSE=1"
+    set "MODE_SOURCE=arg"
+    shift
+    goto :parse_args
+)
 if /i "%~1"=="--dry-run" (
     set "RUN_MODE=dry-run"
+    set "MODE_SOURCE=arg"
+    shift
+    goto :parse_args
+)
+if /i "%~1"=="--restore" (
+    set "RUN_MODE=restore"
     set "MODE_SOURCE=arg"
     shift
     goto :parse_args
@@ -115,6 +129,9 @@ if "!RUN_MODE!"=="" (
 )
 
 call :log "Run mode: !RUN_MODE! (source: !MODE_SOURCE!)"
+
+:: restore 模式：直接回滚，跳过工具扫描（路径询问在参数解析前，回车跳过即可）
+if /i "!RUN_MODE!"=="restore" goto :do_restore
 
 :: ========== 读取当前用户 PATH ==========
 for /f "tokens=* delims=" %%I in ('powershell -NoProfile -Command "((Get-Item 'HKCU:\Environment').GetValue('PATH', '', 'DoNotExpandEnvironmentNames'))" 2^>nul') do (
@@ -193,6 +210,8 @@ if "!NEW_PATH!"=="" (
         if !PATH_LEN! GTR 1024 (
             call :log "PATH is too long for safe setx write. Skip writing PATH."
         ) else (
+            :: 写入前备份当前 PATH，便于 --restore 回滚
+            powershell -NoProfile -Command "[IO.File]::WriteAllText($env:BACKUP_FILE, $env:USER_PATH)"
             setx PATH "!PATH_TO_WRITE!" >nul
             if !errorlevel! neq 0 (
                 call :log "Failed to write PATH by setx."
@@ -336,6 +355,44 @@ if "%VERBOSE%"=="0" exit /b
 if "%~1"=="" exit /b
 echo %~1
 exit /b
+
+:: ========== 从备份恢复 PATH ==========
+:do_restore
+if not exist "%BACKUP_FILE%" (
+    call :log "ERROR: Backup file not found: %BACKUP_FILE%"
+    call :log "Run with --apply first to create a backup."
+    pause
+    exit /b 1
+)
+for /f "usebackq delims=" %%I in ("%BACKUP_FILE%") do set "RESTORE_PATH=%%I"
+:: setx 有 1024 字符限制，超长时拒绝写入避免截断
+for /f %%L in ('powershell -NoProfile -Command "$s=$env:RESTORE_PATH; if($null -eq $s){0}else{$s.Length}"') do (
+    set "RESTORE_LEN=%%L"
+)
+if !RESTORE_LEN! GTR 1024 (
+    call :log "ERROR: Backup PATH is too long for safe setx write (!RESTORE_LEN! chars)."
+    call :log "Backup file: %BACKUP_FILE%"
+    pause
+    exit /b 1
+)
+setx PATH "%RESTORE_PATH%" >nul
+if errorlevel 1 (
+    call :log "ERROR: Failed to restore PATH by setx."
+    pause
+    exit /b 1
+)
+call :log "PATH restored from backup: %BACKUP_FILE%"
+:: 删除脚本曾设置的工具变量，完整回滚
+for %%V in (GIT_HOME MVN_HOME MVND_HOME GRADLE_HOME JAVA_HOME NVM_HOME NVM_SYMLINK GO_HOME PHP_HOME FFMPEG_HOME TOMCAT_HOME) do (
+    reg query "HKCU\Environment" /v %%V >nul 2>&1
+    if not errorlevel 1 (
+        reg delete "HKCU\Environment" /v %%V /f >nul 2>&1
+        call :log "Removed environment variable: %%V"
+    )
+)
+echo Restore completed
+pause
+exit /b 0
 
 :: ========== 结束 ==========
 :end

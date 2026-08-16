@@ -1,0 +1,17 @@
+#!/bin/sh
+# Pre-commit hook: run static checks on batch scripts before every commit.
+# Configured via: git config core.hooksPath .githooks
+
+echo "Running batch script static checks..."
+
+python .scripts/check_batch.py . || {
+    echo "ERROR: batch structure check failed. Fix the issues above or commit with --no-verify."
+    exit 1
+}
+
+python .scripts/check_embedded_ps.py || {
+    echo "ERROR: embedded PowerShell syntax check failed."
+    exit 1
+}
+
+echo "Static checks passed."
