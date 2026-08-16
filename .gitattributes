@@ -5,3 +5,6 @@
 # 其余文本文件统一 LF
 *.md    text eol=lf
 LICENSE text eol=lf
+
+# Git 钩子脚本必须保持 LF（Git Bash 的 sh 执行 CRLF 行尾脚本会异常）
+.githooks/** text eol=lf
