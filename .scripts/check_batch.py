@@ -16,7 +16,9 @@ import os
 sys.stdout.reconfigure(encoding='utf-8', errors='replace')
 
 LABEL_RE = re.compile(r'^\s*:([A-Za-z_][A-Za-z0-9_]*)')
-REF_RE = re.compile(r'(?:goto|call)\s+:?([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
+# goto 可以省略冒号（goto label）；call 必须是 call :label（call C:\x.cmd 是调用外部脚本）
+GOTO_RE = re.compile(r'goto\s+:?([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
+CALL_RE = re.compile(r'call\s+:([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
 
 
 def is_comment(s: str) -> bool:
@@ -46,10 +48,14 @@ def check_file(path: str) -> list:
     for i, l in enumerate(lines, 1):
         if is_comment(l):
             continue
-        for m in REF_RE.finditer(l):
+        for m in GOTO_RE.finditer(l):
             target = m.group(1).lower()
             if target not in labels:
-                problems.append(f'line {i}: goto/call references undefined label :{target}')
+                problems.append(f'line {i}: goto references undefined label :{target}')
+        for m in CALL_RE.finditer(l):
+            target = m.group(1).lower()
+            if target not in labels:
+                problems.append(f'line {i}: call references undefined label :{target}')
 
     # 3) 括号平衡（忽略双引号内、^ 转义、注释行）
     balance = 0

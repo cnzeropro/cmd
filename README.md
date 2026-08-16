@@ -44,6 +44,16 @@ Windows 开发环境常用服务的批处理管理脚本集（`.cmd`），用于
 - 脚本中的服务名与安装路径（如 `C:\App\Env`）为本机约定，换机使用前请按需修改。
 - 脚本文件为 UTF-8 编码，中文注释在默认 GBK 代码页的控制台下可能显示乱码（不影响执行）；如需正常显示，可先执行 `chcp 65001`。
 
+## 沙盒实测（Windows Sandbox）
+
+仓库内置一键实测脚本，在隔离的 Windows Sandbox 中非交互运行关键脚本，验证不会卡死且退出码正确，全程不影响本机（项目目录只读挂载、沙盒无网络）：
+
+1. 启用「Windows 沙盒」功能（需要管理员权限与重启）
+2. 运行 `.scripts\sandbox\launch_sandbox_test.cmd`
+3. 等待约 1-2 分钟，自动显示 3 个测试场景的结果
+
+测试场景：`init_dev_env.cmd --dry-run`（非交互）、Nginx 脚本 EOF 分支、`switch_jdk_version.cmd` EOF 分支。
+
 ## 目录结构
 
 ## 许可证

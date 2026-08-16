@@ -1,0 +1,19 @@
+<Configuration>
+  <VGpu>Disable</VGpu>
+  <Networking>Disable</Networking>
+  <MappedFolders>
+    <MappedFolder>
+      <HostFolder>__REPO_ROOT__</HostFolder>
+      <SandboxFolder>C:epo</SandboxFolder>
+      <ReadOnly>true</ReadOnly>
+    </MappedFolder>
+    <MappedFolder>
+      <HostFolder>__OUT_DIR__</HostFolder>
+      <SandboxFolder>C:	est</SandboxFolder>
+      <ReadOnly>false</ReadOnly>
+    </MappedFolder>
+  </MappedFolders>
+  <LogonCommand>
+    <Command>cmd /c C:	estun_tests.cmd</Command>
+  </LogonCommand>
+</Configuration>
