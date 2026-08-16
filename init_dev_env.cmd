@@ -7,6 +7,7 @@ set "USER_PATH="
 set "NEW_PATH="
 set "TEMP_FILE=%TEMP%\add_env_path_%RANDOM%%RANDOM%%TIME:~0,2%%TIME:~3,2%.txt"
 set "RESOLVED_FILE=%TEMP%\resolved_paths_%RANDOM%%RANDOM%.txt"
+set "PS_FILE=%TEMP%\batch_resolve_%RANDOM%%RANDOM%.ps1"
 set "PATH_TO_WRITE="
 set "PATH_LEN=0"
 set "RUN_MODE="
@@ -14,6 +15,18 @@ set "MODE_SOURCE=prompt"
 set "VERBOSE=0"
 set "QUIET=0"
 set "BASE_PATH=C:\App\Env"
+
+:: ========== 提示确认工具根目录 ==========
+:: 回车使用默认值；输入不存在的路径时重新询问
+:input_base_path
+set "BASE_PATH=C:\App\Env"
+set /p "BASE_PATH=Enter tools base path [default: C:\App\Env]: "
+:: 去掉尾部反斜杠，便于后续拼接
+if "%BASE_PATH:~-1%"=="\" set "BASE_PATH=%BASE_PATH:~0,-1%"
+if not exist "%BASE_PATH%" (
+    call :log "Warning: Directory not found - %BASE_PATH%"
+    goto input_base_path
+)
 
 :: ========== 工具配置 ==========
 :: 格式: call :add_tool "目录名" "前缀" "环境变量名" "子路径"
@@ -206,12 +219,14 @@ for /L %%i in (1,1,%TOOL_COUNT%) do (
     set "ps_script=!ps_script!       }catch{}"
     set "ps_script=!ps_script!     }"
     set "ps_script=!ps_script!   };"
-    set "ps_script=!ps_script!   if($bestPath){ $results += \"TOOL_${idx}_PATH=$bestPath\" }"
+    set "ps_script=!ps_script!   if($bestPath){ $results += "TOOL_${idx}_PATH=$bestPath" }"
     set "ps_script=!ps_script! };"
 )
-set "ps_script=!ps_script! $results -join \"`n\""
+set "ps_script=!ps_script! $results -join "`n"""
 
-powershell -NoProfile -Command "!ps_script!" > "%RESOLVED_FILE%" 2>nul
+:: 将脚本写入临时文件执行，避免超过 cmd 命令行 8191 字符上限
+>"%PS_FILE%" echo !ps_script!
+powershell -NoProfile -ExecutionPolicy Bypass -File "%PS_FILE%" > "%RESOLVED_FILE%" 2>nul
 if !errorlevel! neq 0 (
     del "%RESOLVED_FILE%" 2>nul
     exit /b 1
@@ -316,6 +331,7 @@ exit /b
 :: ========== 结束 ==========
 :end
 if exist "%TEMP_FILE%" del "%TEMP_FILE%" >nul 2>&1
+if exist "%PS_FILE%" del "%PS_FILE%" >nul 2>&1
 echo Script completed
 endlocal
 pause
