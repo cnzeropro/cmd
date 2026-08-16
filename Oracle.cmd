@@ -3,39 +3,129 @@ cls
 color 0a
 title Oracle Manager by Zero
 
-@echo off
->nul 2>&1 "%SYSTEMROOT%\system32\cacls.exe" "%SYSTEMROOT%\system32\config\system"
-if '%ERRORLEVEL%' NEQ '0' (
+:: 执行需要管理员权限的命令（有权限返回0，无权限返回5）
+>nul 2>&1 "%SYSTEMROOT%\system32\icacls.exe" "%SYSTEMROOT%\system32\config\system"
+if "%ERRORLEVEL%" NEQ "0" (
     goto getAdmin
 ) else (
     goto getStart
 )
 
+:: 无权限尝试获取权限
 :getAdmin
-echo Set UAC = CreateObject^("Shell.Application"^) > "%TEMP%\getadmin.vbs"
-echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%TEMP%\getadmin.vbs"
-"%TEMP%\getadmin.vbs"
+:: 创建提权VBS脚本并运行（文件名带随机数，避免并发冲突）
+set "VBS=%TEMP%\getadmin_%RANDOM%.vbs"
+echo Set UAC = CreateObject^("Shell.Application"^) > "%VBS%"
+echo UAC.ShellExecute "%~s0", "", "", "runas", 1 >> "%VBS%"
+"%VBS%"
 exit /B
 
+:: 有权限继续执行
 :getStart
-if exist "%TEMP%\getadmin.vbs" ( del "%TEMP%\getadmin.vbs" )
-@echo off
-for /f "skip=3 tokens=4" %%i in ('sc query OracleServiceXE') do set "state=%%i" & goto next
+if exist "%VBS%" ( del "%VBS%" )
 
-:next
-if /i "%state%"=="RUNNING" (
-    echo service has been found running
-    echo now stopping the service...
-    net stop OracleXETNSListener
-    net stop OracleServiceXE
-) else if /i "%state%"=="STOPPED" (
-    echo service has been detected to be stopped
-    echo now starting the service...
-    net start OracleXETNSListener
-    net start OracleServiceXE
-    @oradim -startup -sid XE -starttype inst
+:: 服务名与 SID 配置（默认 XE 版），回车使用默认值
+:: 在提权之后询问，避免提权重启后重复输入
+set "serviceName=OracleServiceXE"
+set "listenerName=OracleXETNSListener"
+set "oracleSid=XE"
+set /p "serviceName=Enter Oracle service name [default: %serviceName%]: "
+set /p "listenerName=Enter Oracle listener service name [default: %listenerName%]: "
+set /p "oracleSid=Enter Oracle SID [default: %oracleSid%]: "
+
+goto checkService
+
+:: 菜单
+:menu
+cls
+echo.
+echo.=-=-=-=- Please select the operation you want to perform on Oracle (SID: %oracleSid%) -=-=-=-=-
+echo.
+echo.1: Startup Oracle
+echo.
+echo.2: Shutdown Oracle
+echo.
+echo.3: Reboot Oracle
+echo.
+echo.4: Exit
+echo.
+echo.=-=-=-=- Please enter the item number you want to select -=-=-=-
+set /p id=
+if "%id%"=="1" (
+    call :startup
+    goto quit
+) else if "%id%"=="2" (
+    call :shutdown
+    goto quit
+) else if "%id%"=="3" (
+    call :reboot
+    goto quit
+) else if "%id%"=="4" (
+    exit
 ) else (
-    echo The service was not found
+    echo Warning: Wrong item number!
+    :: 暂停3秒
+    ping -n 3 127.0.0.1 > nul
+    goto menu
 )
+
+:: 启动（XE 版需 oradim 显式启动数据库实例）
+:startup
+echo.
+call :checkState 1
+echo.Startup Oracle services...
+net start %listenerName%
+net start %serviceName%
+oradim -startup -sid %oracleSid% -starttype inst
+echo.Oracle started successfully!
+exit /B
+
+:: 停止
+:shutdown
+echo.
+call :checkState 2
+echo.Shutdown Oracle services...
+net stop %listenerName%
+net stop %serviceName%
+echo.Oracle stopped successfully!
+exit /B
+
+:: 重启
+:reboot
+call :shutdown
+ping -n 5 127.0.0.1 > nul
+call :startup
+exit /B
+
+:: 退出到菜单
+:quit
 pause
-exit
+goto menu
+
+:: 检查服务是否存在
+:checkService
+sc query %serviceName% > nul
+if not ERRORLEVEL 1 (
+    goto menu
+) else (
+    echo ERROR: %serviceName% Service does not exist!
+    pause
+    exit
+)
+
+:: 检查服务运行状态（参数: 1=启动前检查 2=停止前检查）
+:checkState
+sc query %serviceName% | find /i "RUNNING" > nul
+if "%1"=="1" (
+    if not errorlevel 1 (
+        echo Warning: %serviceName% started
+        goto quit
+    )
+)
+if "%1"=="2" (
+    if errorlevel 1 (
+        echo Warning: %serviceName% is not started
+        goto quit
+    )
+)
+exit /B

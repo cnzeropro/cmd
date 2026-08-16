@@ -23,6 +23,11 @@ set "BASE_PATH=C:\App\Env"
 set /p "BASE_PATH=Enter tools base path [default: C:\App\Env]: "
 :: 去掉尾部反斜杠，便于后续拼接
 if "%BASE_PATH:~-1%"=="\" set "BASE_PATH=%BASE_PATH:~0,-1%"
+:: 单引号会破坏内嵌 PowerShell 脚本，需拒绝
+if not "%BASE_PATH%"=="%BASE_PATH:'=%" (
+    call :log "Warning: Path must not contain single quotes."
+    goto input_base_path
+)
 if not exist "%BASE_PATH%" (
     call :log "Warning: Directory not found - %BASE_PATH%"
     goto input_base_path
@@ -212,7 +217,7 @@ for /L %%i in (1,1,%TOOL_COUNT%) do (
     set "ps_script=!ps_script!       $norm=($raw -replace '[^0-9]+','.').Trim('.');"
     set "ps_script=!ps_script!       if([string]::IsNullOrWhiteSpace($norm)){ $norm='0.0.0.0' };"
     set "ps_script=!ps_script!       $parts=$norm.Split('.');"
-    set "ps_script=!ps_script!       if($parts.Count -lt 4){ $parts += @('0','0','0','1') };"
+    set "ps_script=!ps_script!       if($parts.Count -lt 4){ $parts += @('0','0','0','0') };"
     set "ps_script=!ps_script!       if($parts.Count -gt 4){ $parts=$parts[0..3] };"
     set "ps_script=!ps_script!       try{ $v=[version]::new([int]$parts[0],[int]$parts[1],[int]$parts[2],[int]$parts[3]);"
     set "ps_script=!ps_script!         if($v -ge $bestVer){ $bestVer=$v; $bestPath=$d.FullName }"
