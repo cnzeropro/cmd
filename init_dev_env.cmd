@@ -21,6 +21,9 @@ set "BASE_PATH=C:\App\Env"
 :input_base_path
 set "BASE_PATH=C:\App\Env"
 set /p "BASE_PATH=Enter tools base path [default: C:\App\Env]: "
+:: 非交互运行（stdin 已关闭）时 set /p 返回 errorlevel 1，
+:: 直接使用默认值跳过校验循环，避免死循环
+if errorlevel 1 goto base_path_done
 :: 去掉尾部反斜杠，便于后续拼接
 if "%BASE_PATH:~-1%"=="\" set "BASE_PATH=%BASE_PATH:~0,-1%"
 :: 单引号会破坏内嵌 PowerShell 脚本，需拒绝
@@ -32,6 +35,7 @@ if not exist "%BASE_PATH%" (
     call :log "Warning: Directory not found - %BASE_PATH%"
     goto input_base_path
 )
+:base_path_done
 
 :: ========== 工具配置 ==========
 :: 格式: call :add_tool "目录名" "前缀" "环境变量名" "子路径"
