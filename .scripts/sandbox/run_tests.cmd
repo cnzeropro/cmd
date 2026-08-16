@@ -50,7 +50,23 @@ echo [M1] start service >> status.txt
 call C:\repo\MySQL57.cmd < C:\test\inputs\m1.txt > out_m1.txt 2>&1
 echo [M1] exit code: %errorlevel% >> status.txt
 call :assert out_m1.txt "MySQL57 started successfully" M1-start
+call :assert out_m1.txt "Service status: RUNNING" M1-status
 ping -n 4 127.0.0.1 > nul
+
+:: T17: checkState 判定命令语义（RUNNING 服务应匹配活动状态、不匹配停止状态）
+echo [T17] checkState matcher semantics >> status.txt
+sc query MySQL57 | findstr /I /C:"RUNNING" /C:"START_PENDING" >nul
+if errorlevel 1 (
+    >> status.txt echo [T17-active-match] FAIL - running service not matched
+) else (
+    >> status.txt echo [T17-active-match] PASS
+)
+sc query MySQL57 | findstr /I /C:"STOPPED" /C:"STOP_PENDING" >nul
+if errorlevel 1 (
+    >> status.txt echo [T17-stopped-no-match] PASS
+) else (
+    >> status.txt echo [T17-stopped-no-match] FAIL - running service matched as stopped
+)
 
 echo [M2] reboot service >> status.txt
 call C:\repo\MySQL57.cmd < C:\test\inputs\m2.txt > out_m2.txt 2>&1
@@ -74,6 +90,7 @@ echo [M5] stop warning when not running >> status.txt
 call C:\repo\MySQL57.cmd < C:\test\inputs\m5.txt > out_m5.txt 2>&1
 echo [M5] exit code: %errorlevel% >> status.txt
 call :assert out_m5.txt "Warning: MySQL57 is not started" M5-warning
+call :assert out_m5.txt "Service status: STOPPED" M5-status
 
 echo [M6] invalid menu choice loops back >> status.txt
 call C:\repo\MySQL57.cmd < C:\test\inputs\m6.txt > out_m6.txt 2>&1
@@ -130,6 +147,7 @@ echo [O1] stop guard when not running >> status.txt
 call C:\repo\Oracle.cmd < C:\test\inputs\o1.txt > out_o1.txt 2>&1
 echo [O1] exit code: %errorlevel% >> status.txt
 call :assert out_o1.txt "Warning: OracleServiceXE is not started" O1-guard
+call :assert out_o1.txt "Listener status" O1-listener
 
 echo [O2] start flow (oradim expected to fail in sandbox) >> status.txt
 call C:\repo\Oracle.cmd < C:\test\inputs\o2.txt > out_o2.txt 2>&1
@@ -151,6 +169,11 @@ echo [O5] missing service guard >> status.txt
 call C:\repo\Oracle.cmd < C:\test\inputs\o5.txt > out_o5.txt 2>&1
 echo [O5] exit code: %errorlevel% >> status.txt
 call :assert out_o5.txt "Service does not exist" O5-missing
+
+echo [T16] listener missing guard >> status.txt
+call C:\repo\Oracle.cmd < C:\test\inputs\o6.txt > out_o8.txt 2>&1
+echo [T16] exit code: %errorlevel% >> status.txt
+call :assert out_o8.txt "NoSuchLsn Service does not exist" T16-listener-missing
 
 echo [O6] EOF guard >> status.txt
 call C:\repo\Oracle.cmd < nul > out_o6.txt 2>&1
@@ -266,6 +289,12 @@ echo [I11] apply EOF with default path >> status.txt
 call C:\repo\init_dev_env.cmd --apply < nul > out_i11.txt 2>&1
 echo [I11] exit code: %errorlevel% >> status.txt
 call :assert out_i11.txt "No changes to PATH" I11-no-change
+
+echo [T15] expanded-form duplicate detection >> status.txt
+setx PATH "C:\test\env\Git\git-2.41.1\bin" >nul
+call C:\repo\init_dev_env.cmd --dry-run < C:\test\inputs\i15.txt > out_i14.txt 2>&1
+echo [T15] exit code: %errorlevel% >> status.txt
+call :assert out_i14.txt "Already exists in PATH: %GIT_HOME%\bin" T15-expanded-dup
 
 echo [T13] list mode shows resolution details >> status.txt
 call C:\repo\init_dev_env.cmd --list < nul > out_i12.txt 2>&1

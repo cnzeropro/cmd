@@ -313,16 +313,28 @@ if "!env_path!"=="" (
     exit /b
 )
 call :log_verbose "Checking if !env_path! exists in PATH..."
+set "PATH_DUP=0"
 findstr /L /C:"!env_path!" "%TEMP_FILE%" >nul
-if !errorlevel! neq 0 (
+if !errorlevel! equ 0 set "PATH_DUP=1"
+:: 字面形式（如 %JAVA_HOME%\bin）未命中时，
+:: 检查展开后的绝对路径形式（仅当对应环境变量已定义）
+if "!PATH_DUP!"=="0" if not "%env_name%"=="" (
+    set "EXPANDED_PATH="
+    call set "EXPANDED_PATH=%%%env_name%%%!env_sub_path!"
+    if defined EXPANDED_PATH (
+        findstr /L /C:"!EXPANDED_PATH!" "%TEMP_FILE%" >nul
+        if !errorlevel! equ 0 set "PATH_DUP=1"
+    )
+)
+if "!PATH_DUP!"=="1" (
+    call :log "Already exists in PATH: !env_path!"
+) else (
     if "!NEW_PATH!"=="" (
         set "NEW_PATH=!env_path!"
     ) else (
         set "NEW_PATH=!NEW_PATH!;!env_path!"
     )
     call :log "Added to PATH: !env_path!"
-) else (
-    call :log "Already exists in PATH: !env_path!"
 )
 call :log_verbose ""
 exit /b

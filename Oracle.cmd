@@ -35,6 +35,14 @@ goto checkService
 :menu
 cls
 echo.
+:: 显示主服务与监听器当前状态
+for /f "tokens=4" %%s in ('sc query %serviceName% ^| findstr /I "STATE"') do (
+    echo.Service status ^(%serviceName%^): %%s
+)
+for /f "tokens=4" %%s in ('sc query %listenerName% ^| findstr /I "STATE"') do (
+    echo.Listener status ^(%listenerName%^): %%s
+)
+echo.
 echo.=-=-=-=- Please select the operation you want to perform on Oracle (SID: %oracleSid%) -=-=-=-=-
 echo.
 echo.1: Startup Oracle
@@ -108,28 +116,35 @@ exit /B
 pause
 goto menu
 
-:: 检查服务是否存在
+:: 检查服务是否存在（主服务与监听器均需存在）
 :checkService
 sc query %serviceName% > nul
-if not ERRORLEVEL 1 (
-    goto menu
-) else (
+if errorlevel 1 (
     echo ERROR: %serviceName% Service does not exist!
     pause
     exit /b 1
 )
+sc query %listenerName% > nul
+if errorlevel 1 (
+    echo ERROR: %listenerName% Service does not exist!
+    pause
+    exit /b 1
+)
+goto menu
 
 :: 检查服务运行状态（参数: 1=启动前检查 2=停止前检查）
 :checkState
-sc query %serviceName% | find /i "RUNNING" > nul
+:: 中间状态 START_PENDING/STOP_PENDING 分别归入运行中/已停止
+sc query %serviceName% | findstr /I /C:"RUNNING" /C:"START_PENDING" > nul
 if "%1"=="1" (
     if not errorlevel 1 (
         echo Warning: %serviceName% started
         goto quit
     )
 )
+sc query %serviceName% | findstr /I /C:"STOPPED" /C:"STOP_PENDING" > nul
 if "%1"=="2" (
-    if errorlevel 1 (
+    if not errorlevel 1 (
         echo Warning: %serviceName% is not started
         goto quit
     )
