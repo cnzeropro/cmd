@@ -9,6 +9,9 @@ import os
 import base64
 import subprocess
 
+# 强制 UTF-8 输出，避免 Windows CI 默认代码页（cp1252）无法编码中文而崩溃
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 # 基于脚本自身位置定位仓库根目录下的 init_dev_env.cmd
 SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), '..', 'init_dev_env.cmd')
 
@@ -20,7 +23,7 @@ with open(SRC, encoding='utf-8') as f:
         m = add_tool_re.match(l.rstrip('\r\n').strip())
         if m:
             tools.append(m.groups())
-print(f'提取到 {len(tools)} 个工具配置')
+print(f'Extracted {len(tools)} tool configs')
 
 # 2) 模拟 :resolve_all_dirs 拼接（BASE_PATH 用默认值）
 BASE = 'C:\\App\\Env'
@@ -85,6 +88,6 @@ def check_ps(code: str, label: str) -> bool:
     return 'PARSE OK' in out
 
 
-ok1 = check_ps(code1, 'resolve_all_dirs 拼接结果（{0} 字符）'.format(len(code1)))
-ok2 = check_ps(code2, 'resolve_latest_dir 内嵌 PS')
+ok1 = check_ps(code1, 'resolve_all_dirs assembled ({0} chars)'.format(len(code1)))
+ok2 = check_ps(code2, 'resolve_latest_dir embedded PS')
 sys.exit(0 if ok1 and ok2 else 1)

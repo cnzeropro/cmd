@@ -12,6 +12,9 @@ import sys
 import glob
 import os
 
+# 强制 UTF-8 输出，避免 Windows CI 默认代码页（cp1252）无法编码中文而崩溃
+sys.stdout.reconfigure(encoding='utf-8', errors='replace')
+
 LABEL_RE = re.compile(r'^\s*:([A-Za-z_][A-Za-z0-9_]*)')
 REF_RE = re.compile(r'(?:goto|call)\s+:?([A-Za-z_][A-Za-z0-9_]*)', re.IGNORECASE)
 
@@ -35,7 +38,7 @@ def check_file(path: str) -> list:
         if m:
             name = m.group(1).lower()
             if name in labels:
-                problems.append(f'line {i}: 标签重复定义 :{name}（首次定义于 line {labels[name]}）')
+                problems.append(f'line {i}: duplicate label :{name} (first defined at line {labels[name]})')
             else:
                 labels[name] = i
 
@@ -46,7 +49,7 @@ def check_file(path: str) -> list:
         for m in REF_RE.finditer(l):
             target = m.group(1).lower()
             if target not in labels:
-                problems.append(f'line {i}: goto/call 引用未定义的标签 :{target}')
+                problems.append(f'line {i}: goto/call references undefined label :{target}')
 
     # 3) 括号平衡（忽略双引号内、^ 转义、注释行）
     balance = 0
@@ -68,16 +71,16 @@ def check_file(path: str) -> list:
                 elif ch == ')':
                     balance -= 1
                     if balance < 0:
-                        problems.append(f'line {i}: 右括号多于左括号')
+                        problems.append(f'line {i}: unmatched closing parenthesis')
             j += 1
     if balance != 0:
-        problems.append(f'括号总数不平衡: 净 {balance} 个未闭合')
+        problems.append(f'unbalanced parentheses: net {balance} unclosed')
 
     # 4) setlocal/endlocal 配对
     setlocal = sum(1 for l in lines if re.search(r'(?i)^\s*@?\s*setlocal\b', l))
     endlocal = sum(1 for l in lines if re.search(r'(?i)^\s*@?\s*endlocal\b', l))
     if setlocal != endlocal:
-        problems.append(f'setlocal({setlocal}) 与 endlocal({endlocal}) 不配对')
+        problems.append(f'setlocal({setlocal}) and endlocal({endlocal}) do not match')
 
     return problems
 
@@ -87,7 +90,7 @@ def main() -> int:
     files = sorted(glob.glob(os.path.join(root, '*.cmd')))
     files += sorted(glob.glob(os.path.join(root, 'Nginx', '*.cmd')))
     if not files:
-        print('未找到 .cmd 文件')
+        print('No .cmd files found')
         return 1
     total = 0
     for path in files:
@@ -100,7 +103,7 @@ def main() -> int:
                 print(f'       - {p}')
         else:
             print(f'[OK]   {name}')
-    print(f'\n共检查 {len(files)} 个脚本，发现 {total} 个问题' if total else f'\n共检查 {len(files)} 个脚本，全部通过')
+    print(f'\nChecked {len(files)} scripts, found {total} problem(s)' if total else f'\nChecked {len(files)} scripts, all passed')
     return 0 if total == 0 else 1
 
 
