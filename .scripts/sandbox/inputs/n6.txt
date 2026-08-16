@@ -1,0 +1,2 @@
+C:\nope\nginx.exe
+C:\test\fake\nginx.cmd

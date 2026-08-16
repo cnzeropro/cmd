@@ -45,6 +45,8 @@ echo.4: Exit
 echo.
 echo.=-=-=-=- Please enter the item number you want to select -=-=-=-
 set /p id=
+:: 非交互运行（stdin 已关闭）时直接退出，避免菜单死循环
+if errorlevel 1 exit /b
 if "%id%"=="1" (
     call :startup
     goto quit
@@ -55,7 +57,7 @@ if "%id%"=="1" (
     call :reboot
     goto quit
 ) else if "%id%"=="4" (
-    exit
+    exit /b 0
 ) else (
     echo Warning: Wrong item number!
     :: 暂停3秒
@@ -69,6 +71,10 @@ echo.
 call :checkState 1
 echo.Startup %serviceName%...
 net start %serviceName%
+if errorlevel 1 (
+    echo ERROR: Failed to start %serviceName%.
+    exit /B 1
+)
 echo.%serviceName% started successfully!
 exit /B
 
@@ -78,6 +84,10 @@ echo.
 call :checkState 2
 echo.Shutdown %serviceName%...
 net stop %serviceName%
+if errorlevel 1 (
+    echo ERROR: Failed to stop %serviceName%.
+    exit /B 1
+)
 echo.%serviceName% stopped successfully!
 exit /B
 
@@ -101,7 +111,7 @@ if not ERRORLEVEL 1 (
 ) else (
     echo ERROR: %serviceName% Service does not exist!
     pause
-    exit
+    exit /b 1
 )
 
 :: 检查服务运行状态（参数: 1=启动前检查 2=停止前检查）

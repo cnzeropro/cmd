@@ -26,10 +26,10 @@ if not exist "%java_home_base%" (
 @echo -=-=-=- Please enter the jdk version (q to quit) -=-=-=-
 dir "%java_home_base%" /AD /B
 set /p "version=version: "
-:: 非交互运行（stdin 已关闭）时 version 保持未定义，
-:: 继续执行会把 JAVA_HOME 误写为裸 base 目录，直接退出
+:: 空输入（交互回车）与非交互 EOF 无法区分（errorlevel 均为 1），
+:: 统一视为未选择版本并退出，避免用未定义版本误写 JAVA_HOME
 if errorlevel 1 (
-    @echo Error: No input available for JDK version.
+    @echo Error: JDK version is required.
     pause
     exit /b 1
 )

@@ -1,0 +1,4 @@
+OracleServiceXE
+OracleXETNSListener
+TESTSID
+4
