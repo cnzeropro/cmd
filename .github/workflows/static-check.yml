@@ -1,0 +1,24 @@
+name: Static Check
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  check:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Batch structure check
+        shell: cmd
+        run: python .scripts\check_batch.py .
+
+      - name: Embedded PowerShell syntax check
+        shell: cmd
+        run: python .scripts\check_embedded_ps.py
