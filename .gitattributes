@@ -1,0 +1,6 @@
+# 批处理脚本必须保持 CRLF 行尾，否则在 Windows cmd 下执行异常
+*.cmd text eol=crlf
+*.bat text eol=crlf
+
+# 其余文本文件统一 LF
+*.md  text eol=lf
