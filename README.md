@@ -1,4 +1,4 @@
-# cmd
+# script-kit
 
 Windows 开发环境常用服务的批处理管理脚本集（`.cmd`），用于快速启动、停止、重启本机服务及初始化开发环境。
 
@@ -70,7 +70,7 @@ Windows 开发环境常用服务的批处理管理脚本集（`.cmd`），用于
 ## 目录结构
 
 ```
-cmd/
+script-kit/
 ├── MySQL57.cmd
 ├── MySQL80.cmd
 ├── Oracle.cmd
