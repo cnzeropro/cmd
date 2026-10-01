@@ -1,4 +1,4 @@
-# win-dev-scripts
+# cmd
 
 Windows 开发环境常用服务的批处理管理脚本集（`.cmd`），用于快速启动、停止、重启本机服务及初始化开发环境。
 
@@ -61,6 +61,8 @@ Windows 开发环境常用服务的批处理管理脚本集（`.cmd`），用于
 - 提交前自动运行静态检查（pre-commit 钩子，经 `core.hooksPath` 指向 `.githooks/`）
 - 推送后 GitHub Actions 自动运行相同检查（`.github/workflows/static-check.yml`）
 
+## 目录结构
+
 ## 许可证
 
 [MIT](LICENSE)
@@ -68,7 +70,7 @@ Windows 开发环境常用服务的批处理管理脚本集（`.cmd`），用于
 ## 目录结构
 
 ```
-win-dev-scripts/
+cmd/
 ├── MySQL57.cmd
 ├── MySQL80.cmd
 ├── Oracle.cmd
